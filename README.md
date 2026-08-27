@@ -1,114 +1,130 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Rick and Morty — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Серверная часть приложения «Рик и Морти»: NestJS-сервис поверх публичного
+[The Rick and Morty API](https://rickandmortyapi.com/documentation). Фронтенд ходит только сюда;
+внешний API и Gemini вызываются исключительно с сервера.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Фронтенд: [rick-morty-frontend](../rick-morty-frontend) · Прод: `https://api.rick-morty.welt-on.com` · Swagger: `/api/docs`
 
-## Description
+## Что делает
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/characters?page&name&status&species&type&gender` | список персонажей, 20 на страницу |
+| GET | `/characters/:id` | персонаж + его эпизоды (батч-запрос) |
+| GET | `/episodes?page&name&episode` | список эпизодов |
+| GET | `/episodes/:id` | эпизод + персонажи |
+| GET | `/locations?page&name&type&dimension` | список локаций |
+| GET | `/locations/:id` | локация + жители |
+| GET | `/search?q=` | поиск по всем трём типам сразу (по 8 первых + total) |
+| GET | `/ai/characters/:id/description` | описание персонажа от Gemini, кэшируется в Postgres |
+| GET | `/health` | проверка живости (k8s-пробы) |
 
-## Project setup
+Единый формат списков: `{ items, page, pages, total, hasNext, hasPrev }`. Пустой результат — `items: []`,
+а не ошибка (внешний API отвечает 404 на пустой поиск — это маппится в пустую страницу).
 
-```bash
-$ npm install
-```
+## Стек и почему он
 
-## Compile and run the project
+- **NestJS 12 (ESM, TypeScript)** — модульная структура, DI, декларативная валидация DTO, Swagger из коробки.
+  Тот же стек, что в остальных проектах автора, поэтому деплой-обвязка и паттерны переиспользованы.
+- **Prisma 7 + PostgreSQL** — БД нужна только для кэша AI-описаний; Prisma даёт типобезопасный доступ и
+  миграции, которые прогоняются initContainer'ом при деплое.
+- **`@google/genai` (Gemini 2.5 Flash)** — бесплатный tier, ключ уже был, проверенная интеграция.
+  Задание предлагает ChatGPT «например», провайдер не принципиален.
+- **Vitest + oxlint** — дефолт Nest 12 CLI, быстрые.
+- **Docker + k3s + GitHub Actions** — собственный сервер уже есть; тот же пайплайн, что у других проектов.
 
-```bash
-# development
-$ npm run start
+## Запуск локально
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
+Требования: Node 22+, доступ к Postgres. В dev-режиме сервис сам поднимает SSH-туннель к БД на сервере
+(`src/ssh-tunnel.ts`), поэтому нужен SSH-ключ и переменные `SSH_*`. Если у вас локальный Postgres —
+уберите `SSH_*` из `.env`, укажите свой `DATABASE_URL` и закомментируйте вызов `openSSHTunnel()` в `src/main.ts`.
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
+cp .env.example .env          # заполнить DATABASE_URL, SSH_*, при желании GEMINI_API_KEY
+npm run prisma:generate
+npm run start:dev             # http://localhost:4009, Swagger на /api/docs
 ```
 
-## Deployment
+Миграции: `npx prisma migrate deploy` (через открытый туннель или напрямую к БД).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Проверка: `npm test` (unit), `npm run lint`, `npm run build`.
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+curl 'localhost:4009/characters?name=rick&status=alive'
+curl  localhost:4009/search?q=morty
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Переменные окружения
 
-## Observability
+| Переменная | Назначение |
+|---|---|
+| `DATABASE_URL` | Postgres для кэша AI-описаний |
+| `PORT` | порт HTTP (4009) |
+| `FRONTEND_URL` | origin для CORS |
+| `SSH_HOST/PORT/USER/LOCAL_PORT/DST_HOST/DST_PORT/KEY_NAME` | SSH-туннель к БД (только dev) |
+| `RICK_API_URL` | базовый URL внешнего API (по умолчанию публичный) |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Gemini; без ключа `/ai/*` отвечает 503, фронт прячет блок |
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+## Как устроено
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+```
+src/
+  rick-api/     клиент к rickandmortyapi.com: TTL-кэш в памяти (10 мин), дедупликация
+                одновременных запросов, таймаут 8 с + один повтор, батчи по 50 id,
+                маппинг «сырых» ответов в контракт фронтенда (mappers.ts)
+  characters/   контроллер + сервис + DTO с валидацией query-параметров
+  episodes/     — // —
+  locations/    — // —
+  search/       три параллельных запроса, по 8 результатов каждого типа
+  ai/           Gemini: промпт из фактов о персонаже → текст → upsert в ai_descriptions
+  prisma/       PrismaService (pg-адаптер)
+  common/       типы контракта, logging-interceptor, exception-filter, helpers для DTO
+  ssh-tunnel.ts dev-туннель к БД
+```
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+Контракт ответов (`src/common/types.ts`) один в один повторяется в `src/lib/types.ts` фронтенда — это
+единственная «шина» между репозиториями.
 
-## Resources
+## Процесс разработки
 
-Check out a few resources that may come in handy when working with NestJS:
+1. Сначала зафиксировал контракт API (типы + список эндпоинтов), чтобы фронт и бэк можно было писать параллельно.
+2. Написал клиент к внешнему API с кэшем и обработкой краевых случаев (404 = пусто, один id в батче
+   возвращается объектом, а не массивом, «unknown»-локации без ссылки).
+3. Модули по ресурсам, DTO-валидация, Swagger.
+4. AI-модуль с кэшем в БД: Prisma-модель, миграция через `migrate diff` + `migrate deploy`.
+5. Smoke-тесты всех эндпоинтов через curl, unit-тесты на мапперы.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Подходы, которые стоит отметить
 
-## Support
+- **Backend-for-frontend**: ответы уже в форме, удобной UI (`episodeIds`, `origin.id`, `hasNext`),
+  фронт не знает о структуре внешнего API.
+- **Кэш + дедупликация in-flight**: пагинация «назад/вперёд» и повторные детальные страницы не бьют во внешний API;
+  одновременные одинаковые запросы схлопываются в один.
+- **AI-описания генерируются один раз** и живут в Postgres — экономия квоты и мгновенный ответ повторно.
+- **Ошибки — это данные для UI**: 400 с перечнем нарушений, 404 с текстом, 502/504 при проблемах upstream,
+  503 когда AI не настроен. Фронт различает их и показывает разные состояния.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Компромиссы
 
-## Stay in touch
+- **20 элементов на страницу** — размер задаёт внешний API; свой page-size стоил бы N запросов на страницу.
+- **Кэш в памяти процесса** — при рестарте пода он пуст; для одного инстанса этого достаточно.
+- **`prisma migrate dev` не используется** — он требует shadow-БД и интерактивен; миграции генерируются
+  `prisma migrate diff` и применяются `migrate deploy` (как в проде).
+- **AI может «галлюцинировать»** сюжетные детали для эпизодических персонажей — в промпте есть инструкция
+  честно говорить о нехватке данных, в UI есть дисклеймер.
+- **БД используется минимально** (одна таблица). Её можно было бы не заводить, но инфраструктура уже была.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Известные проблемы
 
-## License
+- Первый вызов `/ai/...` для персонажа занимает 5–15 с (Gemini); ограничения квоты Google не обрабатываются
+  отдельно — приходит 502 с предложением повторить.
+- `prisma@latest` сейчас резолвится в `8.0.0-rc` с другим CLI — в проекте зафиксирован `prisma@7`.
+- Локальный запуск завязан на SSH-туннель к серверной БД (см. раздел «Запуск»).
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Деплой
+
+`push` в `main` → GitHub Actions собирает образ, пушит в `registry.welt-on.com`, применяет `k8s/prod/`
+(namespace, deployment с initContainer `prisma migrate deploy`, service, ingress с TLS) и ждёт rollout.
+Секреты кластера: `rick-morty-backend-secrets` (`DATABASE_URL`, `GEMINI_API_KEY`) и `registry-secret`.

@@ -1,7 +1,10 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { openSSHTunnel, closeSSHTunnel } from './ssh-tunnel.js';
 
 async function bootstrap() {
@@ -18,9 +21,27 @@ async function bootstrap() {
     credentials: true,
   });
 
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Rick and Morty API')
+    .setDescription('Backend-for-frontend over rickandmortyapi.com with AI descriptions')
+    .setVersion('1.0')
+    .build();
+  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
+
   const port = process.env.PORT ?? 4009;
   await app.listen(port, '0.0.0.0');
   logger.log(`Server is running on port ${port}`);
+  logger.log(`Swagger: http://localhost:${port}/api/docs`);
 
   const shutdown = () => {
     void app.close().then(() => {
