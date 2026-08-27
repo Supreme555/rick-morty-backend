@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rick-morty-backend
+  namespace: rick-morty
+  labels:
+    app: rick-morty-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: rick-morty-backend
+  ports:
+    - port: 80
+      targetPort: 4009
+      protocol: TCP
+      name: http

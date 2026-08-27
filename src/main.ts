@@ -13,8 +13,13 @@ async function bootstrap() {
   app.enableShutdownHooks();
   const logger = new Logger('Bootstrap');
 
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+  app.enableCors({
+    origin: process.env.FRONTEND_URL ?? 'http://localhost:4008',
+    credentials: true,
+  });
+
+  const port = process.env.PORT ?? 4009;
+  await app.listen(port, '0.0.0.0');
   logger.log(`Server is running on port ${port}`);
 
   const shutdown = () => {

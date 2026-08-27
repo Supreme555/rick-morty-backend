@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rick-morty
+  labels:
+    app.kubernetes.io/name: rick-morty
+    app.kubernetes.io/env: production

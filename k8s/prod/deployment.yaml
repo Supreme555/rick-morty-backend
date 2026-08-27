@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rick-morty-backend
+  namespace: rick-morty
+  labels:
+    app: rick-morty-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rick-morty-backend
+  template:
+    metadata:
+      labels:
+        app: rick-morty-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      initContainers:
+        - name: migrate
+          image: registry.welt-on.com/rick-morty-backend:latest
+          command: ["/app/node_modules/.bin/prisma", "migrate", "deploy"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - secretRef:
+                name: rick-morty-backend-secrets
+          env:
+            - name: HOME
+              value: /tmp
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: rick-morty-backend
+          image: registry.welt-on.com/rick-morty-backend:latest
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 4009
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: rick-morty-backend-secrets
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "4009"
+            - name: FRONTEND_URL
+              value: "https://rick-morty.welt-on.com"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4009
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4009
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      imagePullSecrets:
+        - name: registry-secret
