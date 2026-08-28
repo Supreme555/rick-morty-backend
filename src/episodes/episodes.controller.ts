@@ -9,7 +9,9 @@ export class EpisodesController {
   constructor(private readonly episodes: EpisodesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List episodes (20 per page) with optional filters' })
+  @ApiOperation({
+    summary: 'List episodes (20 per page) with optional filters',
+  })
   list(@Query() query: ListEpisodesDto) {
     return this.episodes.list(query);
   }

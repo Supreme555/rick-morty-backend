@@ -9,7 +9,9 @@ export class CharactersController {
   constructor(private readonly characters: CharactersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List characters (20 per page) with optional filters' })
+  @ApiOperation({
+    summary: 'List characters (20 per page) with optional filters',
+  })
   list(@Query() query: ListCharactersDto) {
     return this.characters.list(query);
   }

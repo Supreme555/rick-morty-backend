@@ -1,32 +1,34 @@
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { BaseExceptionFilter } from '@nestjs/core';
+import type { Request } from 'express';
 
+/**
+ * Nest's BaseExceptionFilter already maps HttpException and http-errors
+ * (body-parser 413/415, "request aborted"…) and guards against headers that
+ * were already sent — we only add structured logging on top of it.
+ */
 @Catch()
-export class AllExceptionsFilter implements ExceptionFilter {
+export class AllExceptionsFilter extends BaseExceptionFilter {
   private readonly logger = new Logger('Exceptions');
 
-  catch(exception: unknown, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const req = ctx.getRequest<Request>();
-    const res = ctx.getResponse<Response>();
+  override catch(exception: unknown, host: ArgumentsHost): void {
+    const req = host.switchToHttp().getRequest<Request>();
 
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : this.isHttpError(exception)
+          ? exception.statusCode
+          : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message =
-      exception instanceof HttpException
-        ? exception.message
-        : 'Internal server error';
-
+      exception instanceof Error ? exception.message : 'Internal server error';
     const label = `${req.method} ${req.originalUrl} ${status} — ${message}`;
 
     if (status >= 500) {
@@ -38,11 +40,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn(label);
     }
 
-    const body =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : { statusCode: status, message };
-
-    res.status(status).json(body);
+    super.catch(exception, host);
   }
 }

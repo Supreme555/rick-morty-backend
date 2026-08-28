@@ -1,15 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
-import { emptyToUndefined, toOptionalInt } from '../../common/query.js';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { PaginationDto } from '../../common/pagination.dto.js';
+import { emptyToUndefined } from '../../common/query.js';
 
-export class ListEpisodesDto {
-  @ApiPropertyOptional({ minimum: 1, default: 1 })
-  @toOptionalInt()
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  page: number = 1;
-
+export class ListEpisodesDto extends PaginationDto {
   @ApiPropertyOptional()
   @emptyToUndefined()
   @IsOptional()

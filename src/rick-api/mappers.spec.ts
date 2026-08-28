@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { idFromUrl, toCharacterSummary, toPaginated, toEpisodeSummary } from './mappers.js';
+import {
+  idFromUrl,
+  toCharacterSummary,
+  toPaginated,
+  toEpisodeSummary,
+} from './mappers.js';
 import type { RawCharacter, RawEpisode } from './raw.types.js';
 
 const rick: RawCharacter = {
@@ -9,7 +14,10 @@ const rick: RawCharacter = {
   species: 'Human',
   type: '',
   gender: 'Male',
-  origin: { name: 'Earth (C-137)', url: 'https://rickandmortyapi.com/api/location/1' },
+  origin: {
+    name: 'Earth (C-137)',
+    url: 'https://rickandmortyapi.com/api/location/1',
+  },
   location: { name: 'unknown', url: '' },
   image: 'https://rickandmortyapi.com/api/character/avatar/1.jpeg',
   episode: [
@@ -56,13 +64,20 @@ describe('toEpisodeSummary', () => {
       url: '',
       created: '',
     };
-    expect(toEpisodeSummary(raw)).toMatchObject({ airDate: 'December 2, 2013', characterIds: [1] });
+    expect(toEpisodeSummary(raw)).toMatchObject({
+      airDate: 'December 2, 2013',
+      characterIds: [1],
+    });
   });
 });
 
 describe('toPaginated', () => {
-  it('returns an empty page for upstream 404 (null)', () => {
-    expect(toPaginated(null, 3, (x) => x)).toEqual({
+  it('maps an empty upstream page to an empty result', () => {
+    const empty = {
+      info: { count: 0, pages: 0, next: null, prev: null },
+      results: [],
+    };
+    expect(toPaginated(empty, 3, (x) => x)).toEqual({
       items: [],
       page: 3,
       pages: 0,
@@ -73,11 +88,19 @@ describe('toPaginated', () => {
   });
   it('derives hasNext/hasPrev from info links', () => {
     const page = toPaginated(
-      { info: { count: 826, pages: 42, next: 'x', prev: null }, results: [rick] },
+      {
+        info: { count: 826, pages: 42, next: 'x', prev: null },
+        results: [rick],
+      },
       1,
       toCharacterSummary,
     );
-    expect(page).toMatchObject({ pages: 42, total: 826, hasNext: true, hasPrev: false });
+    expect(page).toMatchObject({
+      pages: 42,
+      total: 826,
+      hasNext: true,
+      hasPrev: false,
+    });
     expect(page.items[0].name).toBe('Rick Sanchez');
   });
 });

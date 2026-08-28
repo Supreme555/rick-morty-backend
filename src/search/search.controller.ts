@@ -9,7 +9,9 @@ export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Search characters, episodes and locations by name at once' })
+  @ApiOperation({
+    summary: 'Search characters, episodes and locations by name at once',
+  })
   search(@Query() query: SearchDto) {
     return this.searchService.search(query.q);
   }

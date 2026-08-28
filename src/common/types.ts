@@ -1,5 +1,13 @@
-export type CharacterStatus = 'Alive' | 'Dead' | 'unknown';
-export type CharacterGender = 'Female' | 'Male' | 'Genderless' | 'unknown';
+export const CHARACTER_STATUSES = ['Alive', 'Dead', 'unknown'] as const;
+export const CHARACTER_GENDERS = [
+  'Female',
+  'Male',
+  'Genderless',
+  'unknown',
+] as const;
+
+export type CharacterStatus = (typeof CHARACTER_STATUSES)[number];
+export type CharacterGender = (typeof CHARACTER_GENDERS)[number];
 
 export interface Paginated<T> {
   items: T[];

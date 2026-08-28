@@ -1,31 +1,29 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
-import { emptyToUndefined, toLowerCase, toOptionalInt } from '../../common/query.js';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { PaginationDto } from '../../common/pagination.dto.js';
+import { emptyToUndefined, toLowerCase } from '../../common/query.js';
+import { CHARACTER_GENDERS, CHARACTER_STATUSES } from '../../common/types.js';
 
-export const CHARACTER_STATUSES = ['alive', 'dead', 'unknown'] as const;
-export const CHARACTER_GENDERS = ['female', 'male', 'genderless', 'unknown'] as const;
+/** Upstream filters are case-insensitive; we normalise to lowercase. */
+const STATUS_FILTERS = CHARACTER_STATUSES.map((s) => s.toLowerCase());
+const GENDER_FILTERS = CHARACTER_GENDERS.map((g) => g.toLowerCase());
 
-export class ListCharactersDto {
-  @ApiPropertyOptional({ minimum: 1, default: 1 })
-  @toOptionalInt()
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  page: number = 1;
-
-  @ApiPropertyOptional({ description: 'Filter by name (substring, case-insensitive)' })
+export class ListCharactersDto extends PaginationDto {
+  @ApiPropertyOptional({
+    description: 'Filter by name (substring, case-insensitive)',
+  })
   @emptyToUndefined()
   @IsOptional()
   @IsString()
   @MaxLength(100)
   name?: string;
 
-  @ApiPropertyOptional({ enum: CHARACTER_STATUSES })
+  @ApiPropertyOptional({ enum: STATUS_FILTERS })
   @emptyToUndefined()
   @toLowerCase()
   @IsOptional()
-  @IsIn(CHARACTER_STATUSES)
-  status?: (typeof CHARACTER_STATUSES)[number];
+  @IsIn(STATUS_FILTERS)
+  status?: string;
 
   @ApiPropertyOptional()
   @emptyToUndefined()
@@ -41,10 +39,10 @@ export class ListCharactersDto {
   @MaxLength(100)
   type?: string;
 
-  @ApiPropertyOptional({ enum: CHARACTER_GENDERS })
+  @ApiPropertyOptional({ enum: GENDER_FILTERS })
   @emptyToUndefined()
   @toLowerCase()
   @IsOptional()
-  @IsIn(CHARACTER_GENDERS)
-  gender?: (typeof CHARACTER_GENDERS)[number];
+  @IsIn(GENDER_FILTERS)
+  gender?: string;
 }

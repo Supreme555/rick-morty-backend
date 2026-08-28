@@ -9,7 +9,9 @@ export class LocationsController {
   constructor(private readonly locations: LocationsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List locations (20 per page) with optional filters' })
+  @ApiOperation({
+    summary: 'List locations (20 per page) with optional filters',
+  })
   list(@Query() query: ListLocationsDto) {
     return this.locations.list(query);
   }

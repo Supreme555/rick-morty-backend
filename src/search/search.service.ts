@@ -5,7 +5,12 @@ import {
   toEpisodeSummary,
   toLocationSummary,
 } from '../rick-api/mappers.js';
-import type { RawCharacter, RawEpisode, RawLocation, RawPaginated } from '../rick-api/raw.types.js';
+import type {
+  RawCharacter,
+  RawEpisode,
+  RawLocation,
+  RawPaginated,
+} from '../rick-api/raw.types.js';
 import type { SearchResult } from '../common/types.js';
 
 const LIMIT_PER_TYPE = 8;
@@ -40,7 +45,12 @@ export class SearchService {
   }
 }
 
-function pick<R, T>(raw: RawPaginated<R> | null, map: (r: R) => T): { items: T[]; total: number } {
-  if (!raw) return { items: [], total: 0 };
-  return { items: raw.results.slice(0, LIMIT_PER_TYPE).map(map), total: raw.info.count };
+function pick<R, T>(
+  raw: RawPaginated<R>,
+  map: (r: R) => T,
+): { items: T[]; total: number } {
+  return {
+    items: raw.results.slice(0, LIMIT_PER_TYPE).map(map),
+    total: raw.info.count,
+  };
 }

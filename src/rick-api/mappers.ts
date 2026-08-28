@@ -1,11 +1,13 @@
-import type {
-  CharacterGender,
-  CharacterStatus,
-  CharacterSummary,
-  EpisodeSummary,
-  LocationSummary,
-  Paginated,
-  ResourceRef,
+import {
+  CHARACTER_GENDERS,
+  CHARACTER_STATUSES,
+  type CharacterGender,
+  type CharacterStatus,
+  type CharacterSummary,
+  type EpisodeSummary,
+  type LocationSummary,
+  type Paginated,
+  type ResourceRef,
 } from '../common/types.js';
 import type {
   RawCharacter,
@@ -29,19 +31,19 @@ function toRef(ref: RawRef): ResourceRef {
   return { id: idFromUrl(ref.url), name: ref.name };
 }
 
-const STATUSES: CharacterStatus[] = ['Alive', 'Dead', 'unknown'];
-const GENDERS: CharacterGender[] = ['Female', 'Male', 'Genderless', 'unknown'];
+const STATUSES: readonly string[] = CHARACTER_STATUSES;
+const GENDERS: readonly string[] = CHARACTER_GENDERS;
 
 export function toCharacterSummary(raw: RawCharacter): CharacterSummary {
   return {
     id: raw.id,
     name: raw.name,
-    status: STATUSES.includes(raw.status as CharacterStatus)
+    status: STATUSES.includes(raw.status)
       ? (raw.status as CharacterStatus)
       : 'unknown',
     species: raw.species,
     type: raw.type,
-    gender: GENDERS.includes(raw.gender as CharacterGender)
+    gender: GENDERS.includes(raw.gender)
       ? (raw.gender as CharacterGender)
       : 'unknown',
     image: raw.image,
@@ -75,13 +77,10 @@ export function toLocationSummary(raw: RawLocation): LocationSummary {
 }
 
 export function toPaginated<R, T>(
-  raw: RawPaginated<R> | null,
+  raw: RawPaginated<R>,
   page: number,
   map: (item: R) => T,
 ): Paginated<T> {
-  if (!raw) {
-    return { items: [], page, pages: 0, total: 0, hasNext: false, hasPrev: false };
-  }
   return {
     items: raw.results.map(map),
     page,
